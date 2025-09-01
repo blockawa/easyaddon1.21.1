@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "easy-addon",
+  "version": "0.0.8",
+  "name": "EasyKit Addon",
+  "description": "easykit-addon for Meteor Client.",
+  "authors": [
+    "idhammai"
+  ],
+  "icon": "assets/easyaddon/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "me.idhammai.addon.EasyAddon"
+    ]
+  },
+  "mixins": [
+    "addon-easyaddon.mixins.json"
+  ],
+  "custom": {
+    "meteor-client:color": "225,25,25"
+  },
+  "depends": {
+    "java": ">=17",
+    "minecraft": ["${mc_version}"],
+    "meteor-client": "*"
+  }
+}
