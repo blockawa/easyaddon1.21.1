@@ -79,8 +79,6 @@ tasks {
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/easyaddon.accesswidener")
-
     // 配置runClient任务
     runs {
         client {
