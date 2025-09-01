@@ -29,13 +29,15 @@ public class ElytraFlyXin extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
     public final Setting<Boolean> autoStop = sgGeneral.add(new BoolSetting.Builder()
-        .name("auto-stop")
+        .name("未加载区块时停止")
+        .description("当区块没加载时停止飞行")
         .defaultValue(true)
         .build()
     );
 
     public final Setting<Double> speed = sgGeneral.add(new DoubleSetting.Builder()
-        .name("speed")
+        .name("飞行速度")
+        .description("飞行的水平速度")
         .defaultValue(1.5)
         .min(0.1)
         .sliderMin(0.1)
@@ -45,7 +47,8 @@ public class ElytraFlyXin extends Module {
     );
 
     public final Setting<Double> downSpeed = sgGeneral.add(new DoubleSetting.Builder()
-        .name("down-speed")
+        .name("下降速度")
+        .description("下降时的速度")
         .defaultValue(1)
         .min(0.1)
         .sliderMin(0.1)
@@ -94,8 +97,9 @@ public class ElytraFlyXin extends Module {
     /**
      * 根据俯仰角和偏航角计算旋转向量
      * 这是3D空间中方向计算的核心方法
+     *
      * @param pitch 俯仰角（上下角度）
-     * @param yaw 偏航角（左右角度）
+     * @param yaw   偏航角（左右角度）
      * @return 返回标准化的3D方向向量
      */
     protected final Vec3d getRotationVector(float pitch, float yaw) {
@@ -116,6 +120,7 @@ public class ElytraFlyXin extends Module {
     /**
      * 获取当前的旋转向量（水平方向）
      * 固定俯仰角为0，只考虑水平方向的旋转
+     *
      * @param tickDelta 帧间插值
      * @return 返回水平方向的向量
      */
@@ -127,6 +132,7 @@ public class ElytraFlyXin extends Module {
     /**
      * 重新启动鞘翅飞行
      * 向服务器发送开始鞘翅飞行的数据包
+     *
      * @param player 玩家实体
      * @return 是否成功启动鞘翅飞行
      */
@@ -141,6 +147,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 检查鞘翅飞行的基本条件
+     *
      * @param player 玩家实体
      * @return 是否满足鞘翅飞行条件
      */
@@ -155,6 +162,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 忽略地面检测，强制启动鞘翅飞行
+     *
      * @param player 玩家实体
      * @return 是否成功启动
      */
@@ -290,6 +298,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 获取X轴速度
+     *
      * @return X轴移动速度
      */
     private double getX() {
@@ -299,6 +308,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 获取Y轴速度
+     *
      * @return Y轴移动速度
      */
     private double getY() {
@@ -307,6 +317,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 获取Z轴速度
+     *
      * @return Z轴移动速度
      */
     private double getZ() {
@@ -315,6 +326,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 设置X轴速度
+     *
      * @param f 新的X轴速度
      */
     private void setX(double f) {
@@ -326,6 +338,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 设置Y轴速度
+     *
      * @param f 新的Y轴速度
      */
     private void setY(double f) {
@@ -337,6 +350,7 @@ public class ElytraFlyXin extends Module {
 
     /**
      * 设置Z轴速度
+     *
      * @param f 新的Z轴速度
      */
     private void setZ(double f) {

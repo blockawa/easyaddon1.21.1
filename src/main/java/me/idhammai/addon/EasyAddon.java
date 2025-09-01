@@ -19,6 +19,7 @@ public class EasyAddon extends MeteorAddon {
 
         // Modules
         Modules.get().add(new ElytraFlyXin());
+        Modules.get().add(new ChickenNametags());
     }
 
     @Override
