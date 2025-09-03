@@ -20,8 +20,9 @@ public class EasyAddon extends MeteorAddon {
         // Modules
         Modules.get().add(new ElytraFlyXin());
         Modules.get().add(new ElytraReplace());
-         Modules.get().add(new SimpleElytraFlyPath());
+        Modules.get().add(new SimpleElytraFlyPath());
         Modules.get().add(new ChickenNametags());
+        Modules.get().add(new AutoLoginXin());
     }
 
     @Override
