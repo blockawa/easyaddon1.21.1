@@ -24,6 +24,7 @@ public class EasyAddon extends MeteorAddon {
         Modules.get().add(new ChickenNametags());
         Modules.get().add(new AutoLoginXin());
         Modules.get().add(new BaseFinderXin());
+        Modules.get().add(new NetherElytraPath());
     }
 
     @Override
