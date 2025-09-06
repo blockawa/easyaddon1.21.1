@@ -1,12 +1,13 @@
 {
   "required": true,
   "package": "me.idhammai.addon.mixins",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "client": [
     "MixinClientPlayerEntity",
     "MixinPlayerEntity"
   ],
   "injectors": {
     "defaultRequire": 1
-  }
+  },
+  "refmap": "easy-addon-refmap.json"
 }
