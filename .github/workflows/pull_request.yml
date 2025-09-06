@@ -1,5 +1,7 @@
 name: Build Pull Request Artifacts
-on: pull_request
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -7,16 +9,23 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
       - name: Wrapper Validation
         uses: gradle/actions/wrapper-validation@v3
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: adopt
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
       - name: Build with Gradle
         run: ./gradlew build
-      - name: Release
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
