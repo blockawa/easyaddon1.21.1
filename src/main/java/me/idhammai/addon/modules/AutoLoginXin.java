@@ -20,13 +20,18 @@ public class AutoLoginXin extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     public static AutoLoginXin INSTANCE;
 
-    private final Timer queueTimer = new Timer();
-    private final Timer timer = new Timer();
+    /* ---------- 计时器 ---------- */
+    private final Timer queueTimer   = new Timer();
+    private final Timer timer        = new Timer();
     private final Timer containerTimer = new Timer();
 
+    /* ---------- 状态标记 ---------- */
     private boolean login = false;
-    private boolean hasAttemptedJoinQueue = false;   // 新增：防止重复加入队列
+    private boolean hasAttemptedJoinQueue = false;
+    private boolean needSwapCompass = false;   // 是否等待切槽完成
+    private int targetCompassSlot = -1;        // 目标指南针槽位
 
+    /* ---------- 配置项 ---------- */
     private final Setting<String> password = sgGeneral.add(new StringSetting.Builder()
         .name("登录密码")
         .description("Xin服登录密码")
@@ -64,6 +69,7 @@ public class AutoLoginXin extends Module {
         MeteorClient.EVENT_BUS.subscribe(new StaticListener());
     }
 
+    /* ====================== 逻辑 ====================== */
     private boolean isInLoginLobby() {
         if (mc.player == null) return false;
         var pos = mc.player.getBlockPos();
@@ -74,21 +80,21 @@ public class AutoLoginXin extends Module {
     public void onTick(TickEvent.Pre event) {
         if (mc.player == null) return;
 
-        /* 1. 登录阶段：发送密码 */
+        /* 1. 发送密码 */
         if (login && timer.passedS(afterLoginTime.get())) {
             mc.getNetworkHandler().sendChatCommand("login " + password.get());
             login = false;
         }
 
-        /* 2. 登录完成后才执行队列相关逻辑 */
+        /* 2. 登录完成后才处理队列逻辑 */
         if (!login && isInLoginLobby()) {
-            /* 2.1 容器内点击指南针 */
+
+            /* 2.1 容器内点击指南针（与之前相同） */
             if (mc.currentScreen instanceof GenericContainerScreen
                 && containerTimer.passedS(containerClickDelay.get())) {
 
                 GenericContainerScreen containerScreen = (GenericContainerScreen) mc.currentScreen;
                 var handler = containerScreen.getScreenHandler();
-
                 for (int i = 0; i < handler.slots.size(); i++) {
                     var slot = handler.slots.get(i);
                     if (slot.hasStack() && slot.getStack().getItem() == Items.COMPASS) {
@@ -100,24 +106,43 @@ public class AutoLoginXin extends Module {
                 }
             }
 
-            /* 2.2 热栏右键指南针加入队列（仅一次） */
-            if (!hasAttemptedJoinQueue
-                && InvUtils.find(Items.COMPASS).isHotbar()
-                && queueTimer.passedS(joinQueueDelay.get())) {
+            /* 2.2 热栏指南针：两步执行，防止切槽未同步 */
+            if (!hasAttemptedJoinQueue) {
+                /* --- 第一步：需要切换时，先切换 --- */
+                if (!needSwapCompass
+                    && InvUtils.find(Items.COMPASS).isHotbar()
+                    && queueTimer.passedS(joinQueueDelay.get())) {
 
-                InvUtils.swap(InvUtils.find(Items.COMPASS).slot(), false);
-                mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-                queueTimer.reset();
-                hasAttemptedJoinQueue = true;
+                    int slot = InvUtils.find(Items.COMPASS).slot();
+                    if (mc.player.getInventory().selectedSlot != slot) {
+                        needSwapCompass = true;
+                        targetCompassSlot = slot;
+                        InvUtils.swap(slot, false);   // 切换到指南针
+                        queueTimer.reset(0.5);        // 给客户端 0.5 秒同步
+                        return;                       // 本 tick 不再继续
+                    }
+                }
+
+                /* --- 第二步：切槽完成后右键使用 --- */
+                if (needSwapCompass && queueTimer.passedS(0.5)) {
+                    needSwapCompass = false;
+                    targetCompassSlot = -1;
+                    mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+                    hasAttemptedJoinQueue = true;
+                    queueTimer.reset();
+                }
             }
         }
     }
 
+    /* ====================== 重连重置 ====================== */
     private class StaticListener {
         @EventHandler
         private void onGameJoined(ServerConnectBeginEvent event) {
             login = true;
-            hasAttemptedJoinQueue = false; // 重连后允许再次加入队列
+            hasAttemptedJoinQueue = false;
+            needSwapCompass = false;
+            targetCompassSlot = -1;
             timer.reset();
             containerTimer.reset();
             queueTimer.reset();
