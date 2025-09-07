@@ -118,7 +118,7 @@ public class AutoLoginXin extends Module {
                         needSwapCompass = true;
                         targetCompassSlot = slot;
                         InvUtils.swap(slot, false);   // 切换到指南针
-                        queueTimer.reset(0.5);        // 给客户端 0.5 秒同步
+                        queueTimer.reset();        // 给客户端 0.5 秒同步
                         return;                       // 本 tick 不再继续
                     }
                 }
