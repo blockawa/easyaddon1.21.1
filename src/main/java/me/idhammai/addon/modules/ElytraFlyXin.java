@@ -173,39 +173,55 @@ public class ElytraFlyXin extends Module {
     public void onMove(TravelEvent event) {
         if (mc.player == null || mc.world == null || !hasElytra || !mc.player.isFallFlying() || event.isPost()) return;
 
-        Vec3d lookVec = getRotationVec(1.0F);
-        double lookDist = Math.sqrt(lookVec.x * lookVec.x + lookVec.z * lookVec.z);
-        double motionDist = Math.sqrt(getX() * getX() + getZ() * getZ());
+        /* ---------- 空格自动前进 ---------- */
+        boolean autoForward = mc.player.input.jumping &&
+                             !mc.options.forwardKey.isPressed() &&
+                             !mc.options.backKey.isPressed() &&
+                             !mc.options.leftKey.isPressed() &&
+                             !mc.options.rightKey.isPressed();
 
-        /* -------------- 新爬升逻辑 -------------- */
-        if (mc.player.input.jumping) {
-            // 1. 面朝水平方向（单位向量）
-            Vec3d lookHoriz = new Vec3d(lookVec.x, 0, lookVec.z).normalize();
-            // 2. 当前水平速度大小
-            double horizSpd = Math.sqrt(getX() * getX() + getZ() * getZ());
-            // 3. 用水平速度“带”你上升
-            double climb = horizSpd * 0.08;          // 爬升强度可调
-            setX(lookHoriz.x * horizSpd * 0.92);     // 保留 92% 水平
-            setZ(lookHoriz.z * horizSpd * 0.92);
-            setY(getY() + climb);                    // 转成上升
-        } else if (mc.player.input.sneaking) {
+        Vec3d velocity = mc.player.getVelocity();
+        double motionDist = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+
+        /* 1. 下降 */
+        if (mc.player.input.sneaking) {
             setY(-downSpeed.get());
-        } else {
+        } else if (!mc.player.input.jumping) {
             setY(-0.00000000003D * 0);
         }
-        /* ---------------------------------------- */
 
-        if (lookDist > 0.0D) {
-            setX(getX() + (lookVec.x / lookDist * motionDist - getX()) * 0.1D);
-            setZ(getZ() + (lookVec.z / lookDist * motionDist - getZ()) * 0.1D);
+        /* 2. 上升（空格） */
+        if (mc.player.input.jumping) {
+            /* 2-1 如果没有水平速度，先自动给一个（全速） */
+            if (motionDist < 0.01) {
+                double[] dir = directionSpeedKey(speed.get());
+                setX(dir[0]);
+                setZ(dir[1]);
+                motionDist = Math.sqrt(dir[0]*dir[0] + dir[1]*dir[1]);
+            }
+
+            /* 2-2 计算升力 */
+            Vec3d lookVec = getRotationVec(1.0F);
+            double lookDist = Math.sqrt(lookVec.x * lookVec.x + lookVec.z * lookVec.z);
+
+            if (motionDist > 0) {
+                double rawUpSpeed = motionDist * 0.01325D;
+                setY(getY() + rawUpSpeed * 3.2D);
+                if (lookDist > 0) {
+                    setX(getX() - lookVec.x * rawUpSpeed / lookDist);
+                    setZ(getZ() - lookVec.z * rawUpSpeed / lookDist);
+                }
+            }
         }
 
-        if (!mc.player.input.jumping) {
+        /* 3. 常规水平加速（原逻辑） */
+        if (!mc.player.input.jumping || autoForward) {
             double[] dir = directionSpeedKey(speed.get());
             setX(dir[0]);
             setZ(dir[1]);
         }
 
+        /* 4. 阻尼 & 取消原版移动 */
         setY(getY() * 0.9900000095367432D);
         setX(getX() * 0.9800000190734863D);
         setZ(getZ() * 0.9900000095367432D);
