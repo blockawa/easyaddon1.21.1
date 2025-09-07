@@ -177,28 +177,23 @@ public class ElytraFlyXin extends Module {
         double lookDist = Math.sqrt(lookVec.x * lookVec.x + lookVec.z * lookVec.z);
         double motionDist = Math.sqrt(getX() * getX() + getZ() * getZ());
 
-        /* 上升 + 前进（只按空格） */
+        /* -------------- 新爬升逻辑 -------------- */
         if (mc.player.input.jumping) {
-            if (motionDist > 0) {
-                double rawUpSpeed = motionDist * 0.01325D;
-                setY(getY() + rawUpSpeed * 3.2D);
-                setX(getX() - lookVec.x * rawUpSpeed / lookDist);
-                setZ(getZ() - lookVec.z * rawUpSpeed / lookDist);
-            } else {
-                double autoSpeed = speed.get() * 0.5;
-                if (lookDist > 0) {
-                    setX((lookVec.x / lookDist) * autoSpeed);
-                    setZ((lookVec.z / lookDist) * autoSpeed);
-                }
-                setY(getY() + 0.06);
-            }
-        }
-
-        if (mc.player.input.sneaking) {
+            // 1. 面朝水平方向（单位向量）
+            Vec3d lookHoriz = new Vec3d(lookVec.x, 0, lookVec.z).normalize();
+            // 2. 当前水平速度大小
+            double horizSpd = Math.sqrt(getX() * getX() + getZ() * getZ());
+            // 3. 用水平速度“带”你上升
+            double climb = horizSpd * 0.08;          // 爬升强度可调
+            setX(lookHoriz.x * horizSpd * 0.92);     // 保留 92% 水平
+            setZ(lookHoriz.z * horizSpd * 0.92);
+            setY(getY() + climb);                    // 转成上升
+        } else if (mc.player.input.sneaking) {
             setY(-downSpeed.get());
-        } else if (!mc.player.input.jumping) {
+        } else {
             setY(-0.00000000003D * 0);
         }
+        /* ---------------------------------------- */
 
         if (lookDist > 0.0D) {
             setX(getX() + (lookVec.x / lookDist * motionDist - getX()) * 0.1D);
