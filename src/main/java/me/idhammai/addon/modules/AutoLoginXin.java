@@ -30,6 +30,8 @@ public class AutoLoginXin extends Module {
     private boolean hasClickedCompassInContainer = false;
     private boolean hasJoinedQueue = false;
 
+    /* ======== 设置项 ======== */
+
     private final Setting<String> password = sgGeneral.add(new StringSetting.Builder()
         .name("登录密码")
         .description("Xin服登录密码")
@@ -70,6 +72,16 @@ public class AutoLoginXin extends Module {
         .build()
     );
 
+    /* ✅ 新增：自动登录开关 */
+    public final Setting<Boolean> autoLoginEnabled = sgGeneral.add(new BoolSetting.Builder()
+        .name("自动登录")
+        .description("是否自动输入登录密码")
+        .defaultValue(true)
+        .build()
+    );
+
+    /* ======================== */
+
     public AutoLoginXin() {
         super(EasyAddon.CATEGORY, "auto-login-xin", "自动登录 Xin 服并加入队列");
         INSTANCE = this;
@@ -86,8 +98,8 @@ public class AutoLoginXin extends Module {
     public void onTick(TickEvent.Pre event) {
         if (mc.player == null) return;
 
-        // ✅ 登录命令
-        if (login && timer.passedS(afterLoginTime.get())) {
+        // ✅ 登录命令（仅当开关开启）
+        if (autoLoginEnabled.get() && login && timer.passedS(afterLoginTime.get())) {
             System.out.println("login " + password.get());
             mc.getNetworkHandler().sendChatCommand("login " + password.get());
             login = false;
