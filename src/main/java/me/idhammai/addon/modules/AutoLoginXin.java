@@ -15,15 +15,20 @@ import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 
-
 public class AutoLoginXin extends Module {
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     public static AutoLoginXin INSTANCE;
+
     private final Timer queueTimer = new Timer();
     private final Timer timer = new Timer();
     private final Timer containerTimer = new Timer();
+
     private boolean login = false;
+
+    // ✅ 状态变量：防止重复操作
+    private boolean hasClickedCompassInContainer = false;
+    private boolean hasJoinedQueue = false;
 
     private final Setting<String> password = sgGeneral.add(new StringSetting.Builder()
         .name("登录密码")
@@ -66,7 +71,7 @@ public class AutoLoginXin extends Module {
     );
 
     public AutoLoginXin() {
-        super(EasyAddon.CATEGORY, "auto-login-xin", "auto-login-xin");
+        super(EasyAddon.CATEGORY, "auto-login-xin", "自动登录 Xin 服并加入队列");
         INSTANCE = this;
         MeteorClient.EVENT_BUS.subscribe(new StaticListener());
     }
@@ -81,35 +86,41 @@ public class AutoLoginXin extends Module {
     public void onTick(TickEvent.Pre event) {
         if (mc.player == null) return;
 
+        // ✅ 登录命令
         if (login && timer.passedS(afterLoginTime.get())) {
-            System.out.println("login" + password.get());
+            System.out.println("login " + password.get());
             mc.getNetworkHandler().sendChatCommand("login " + password.get());
             login = false;
         }
 
-        // 只在未完成登录且在登录大厅位置时执行队列相关操作
+        // ✅ 只在登录大厅执行
         if (isInLoginLobby()) {
-            // 处理容器界面中的指南针点击
-            if (mc.currentScreen instanceof GenericContainerScreen && containerTimer.passedS(containerClickDelay.get())) {
-                GenericContainerScreen containerScreen = (GenericContainerScreen) mc.currentScreen;
-                var handler = containerScreen.getScreenHandler();
+            // ✅ 容器内点击指南针（仅一次）
+            if (mc.currentScreen instanceof GenericContainerScreen
+                && !hasClickedCompassInContainer
+                && containerTimer.passedS(containerClickDelay.get())) {
 
-                // 查找容器中的指南针
+                var handler = ((GenericContainerScreen) mc.currentScreen).getScreenHandler();
                 for (int i = 0; i < handler.slots.size(); i++) {
                     var slot = handler.slots.get(i);
                     if (slot.hasStack() && slot.getStack().getItem() == Items.COMPASS) {
-                        // 点击指南针
                         mc.interactionManager.clickSlot(handler.syncId, i, 0, SlotActionType.PICKUP, mc.player);
                         containerTimer.reset();
+                        hasClickedCompassInContainer = true;
                         break;
                     }
                 }
             }
 
-            if (InvUtils.find(Items.COMPASS).isHotbar() && queueTimer.passedS(joinQueueDelay.get())) {
-                InvUtils.swap(InvUtils.find(Items.COMPASS).slot(),false);
+            // ✅ 右键指南针加入队列（仅一次）
+            if (!hasJoinedQueue
+                && InvUtils.find(Items.COMPASS).isHotbar()
+                && queueTimer.passedS(joinQueueDelay.get())) {
+
+                InvUtils.swap(InvUtils.find(Items.COMPASS).slot(), false);
                 mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
                 queueTimer.reset();
+                hasJoinedQueue = true;
             }
         }
     }
@@ -120,6 +131,11 @@ public class AutoLoginXin extends Module {
             login = true;
             timer.reset();
             containerTimer.reset();
+            queueTimer.reset();
+
+            // ✅ 重置状态
+            hasClickedCompassInContainer = false;
+            hasJoinedQueue = false;
         }
     }
 }
