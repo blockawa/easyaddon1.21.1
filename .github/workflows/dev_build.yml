@@ -27,7 +27,7 @@ jobs:
         uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: latest
+          automatic_release_tag: dev-latest   # 关键修改：避开受保护的 latest
           prerelease: true
           title: Dev Build
           files: ./build/libs/*.jar
