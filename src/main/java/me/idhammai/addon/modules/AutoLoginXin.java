@@ -16,22 +16,23 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 
 public class AutoLoginXin extends Module {
+
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     public static AutoLoginXin INSTANCE;
 
+    /* 状态标记 */
+    private boolean login = false;
+    private boolean hasLoggedIn = false;
+    private boolean hasJoinedQueue = false;
+    private boolean hasClickedCompassInContainer = false;
+
+    /* 计时器 */
+    private final Timer loginTimer = new Timer();
     private final Timer queueTimer = new Timer();
-    private final Timer timer = new Timer();
     private final Timer containerTimer = new Timer();
 
-    private boolean login = false;
-
-    // ✅ 状态变量：防止重复操作
-    private boolean hasClickedCompassInContainer = false;
-    private boolean hasJoinedQueue = false;
-
-    /* ======== 设置项 ======== */
-
+    /* 设置项 */
     private final Setting<String> password = sgGeneral.add(new StringSetting.Builder()
         .name("登录密码")
         .description("Xin服登录密码")
@@ -39,77 +40,62 @@ public class AutoLoginXin extends Module {
         .build()
     );
 
-    public final Setting<Integer> afterLoginTime = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> afterLoginTime = sgGeneral.add(new IntSetting.Builder()
         .name("输入密码延迟")
         .description("输入密码前等待的时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
+        .defaultValue(2).min(0).max(10).sliderRange(0, 10)
         .build()
     );
 
-    public final Setting<Integer> joinQueueDelay = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> joinQueueDelay = sgGeneral.add(new IntSetting.Builder()
         .name("加入队列延迟")
         .description("右键指南针加入队列等待的时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
+        .defaultValue(2).min(0).max(10).sliderRange(0, 10)
         .build()
     );
 
-    public final Setting<Integer> containerClickDelay = sgGeneral.add(new IntSetting.Builder()
+    private final Setting<Integer> containerClickDelay = sgGeneral.add(new IntSetting.Builder()
         .name("容器点击延迟")
         .description("在容器中点击指南针的延迟时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
+        .defaultValue(2).min(0).max(10).sliderRange(0, 10)
         .build()
     );
-
-    /* ✅ 新增：自动登录开关 */
-    public final Setting<Boolean> autoLoginEnabled = sgGeneral.add(new BoolSetting.Builder()
-        .name("自动登录")
-        .description("是否自动输入登录密码")
-        .defaultValue(true)
-        .build()
-    );
-
-    /* ======================== */
 
     public AutoLoginXin() {
-        super(EasyAddon.CATEGORY, "auto-login-xin", "自动登录 Xin 服并加入队列");
+        super(EasyAddon.CATEGORY, "auto-login-xin", " Xin服自动登录 + 自动加入队列");
         INSTANCE = this;
         MeteorClient.EVENT_BUS.subscribe(new StaticListener());
     }
 
+    /* 登录大厅坐标判断（可选） */
     private boolean isInLoginLobby() {
         if (mc.player == null) return false;
         var pos = mc.player.getBlockPos();
         return pos.getX() == 8 && pos.getY() == 5 && pos.getZ() == 8;
     }
 
+    /* 是否处于登录后阶段：只要还没标记已登录，或者仍在登录大厅，都允许继续 */
+    private boolean isPostLoginPhase() {
+        return !hasLoggedIn || isInLoginLobby();
+    }
+
     @EventHandler
     public void onTick(TickEvent.Pre event) {
         if (mc.player == null) return;
 
-        // ✅ 登录命令（仅当开关开启）
-        if (autoLoginEnabled.get() && login && timer.passedS(afterLoginTime.get())) {
-            System.out.println("login " + password.get());
+        /* 1. 发送登录命令 */
+        if (!hasLoggedIn && login && loginTimer.passedS(afterLoginTime.get())) {
             mc.getNetworkHandler().sendChatCommand("login " + password.get());
+            hasLoggedIn = true;   // 标记已发送
             login = false;
         }
 
-        // ✅ 只在登录大厅执行
-        if (isInLoginLobby()) {
-            // ✅ 容器内点击指南针（仅一次）
-            if (mc.currentScreen instanceof GenericContainerScreen
-                && !hasClickedCompassInContainer
+        /* 2. 登录后阶段：容器点击 + 加入队列 */
+        if (isPostLoginPhase()) {
+
+            /* 2.1 容器内点击指南针 */
+            if (!hasClickedCompassInContainer
+                && mc.currentScreen instanceof GenericContainerScreen
                 && containerTimer.passedS(containerClickDelay.get())) {
 
                 var handler = ((GenericContainerScreen) mc.currentScreen).getScreenHandler();
@@ -117,37 +103,38 @@ public class AutoLoginXin extends Module {
                     var slot = handler.slots.get(i);
                     if (slot.hasStack() && slot.getStack().getItem() == Items.COMPASS) {
                         mc.interactionManager.clickSlot(handler.syncId, i, 0, SlotActionType.PICKUP, mc.player);
-                        containerTimer.reset();
                         hasClickedCompassInContainer = true;
+                        containerTimer.reset();
                         break;
                     }
                 }
             }
 
-            // ✅ 右键指南针加入队列（仅一次）
+            /* 2.2 主手右键指南针加入队列 */
             if (!hasJoinedQueue
                 && InvUtils.find(Items.COMPASS).isHotbar()
                 && queueTimer.passedS(joinQueueDelay.get())) {
 
                 InvUtils.swap(InvUtils.find(Items.COMPASS).slot(), false);
                 mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-                queueTimer.reset();
                 hasJoinedQueue = true;
+                queueTimer.reset();
             }
         }
     }
 
+    /* 静态内部类：监听重连事件 */
     private class StaticListener {
         @EventHandler
         private void onGameJoined(ServerConnectBeginEvent event) {
+            /* 全部状态重置 */
             login = true;
-            timer.reset();
-            containerTimer.reset();
-            queueTimer.reset();
-
-            // ✅ 重置状态
-            hasClickedCompassInContainer = false;
+            hasLoggedIn = false;
             hasJoinedQueue = false;
+            hasClickedCompassInContainer = false;
+            loginTimer.reset();
+            queueTimer.reset();
+            containerTimer.reset();
         }
     }
 }
