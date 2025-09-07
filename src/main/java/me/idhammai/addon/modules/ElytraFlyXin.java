@@ -132,7 +132,7 @@ public class ElytraFlyXin extends Module {
     public static double[] directionSpeedKey(double speed) {
         float forward = (mc.options.forwardKey.isPressed() ? 1 : 0) + (mc.options.backKey.isPressed() ? -1 : 0);
         float side = (mc.options.leftKey.isPressed() ? 1 : 0) + (mc.options.rightKey.isPressed() ? -1 : 0);
-        float yaw = mc.player.prevYaw + (mc.player.getYaw() - mc.player.prevYaw) * 1.0F; // ✅ FIXED
+        float yaw = mc.player.prevYaw + (mc.player.getYaw() - mc.player.prevYaw) * 1.0F;
         if (forward != 0.0f) {
             if (side > 0.0f) {
                 yaw += ((forward > 0.0f) ? -45 : 45);
@@ -173,27 +173,31 @@ public class ElytraFlyXin extends Module {
     public void onMove(TravelEvent event) {
         if (mc.player == null || mc.world == null || !hasElytra || !mc.player.isFallFlying() || event.isPost()) return;
 
-        Vec3d lookVec = getRotationVec(1.0F); // ✅ FIXED
+        Vec3d lookVec = getRotationVec(1.0F);
         double lookDist = Math.sqrt(lookVec.x * lookVec.x + lookVec.z * lookVec.z);
         double motionDist = Math.sqrt(getX() * getX() + getZ() * getZ());
 
-        if (mc.player.input.sneaking) {
-            setY(-downSpeed.get());
-        } else if (!mc.player.input.jumping) {
-            setY(-0.00000000003D * 0);
-        }
-
+        /* 上升 + 前进（只按空格） */
         if (mc.player.input.jumping) {
-            if (motionDist > 0 / 10) {
+            if (motionDist > 0) {
                 double rawUpSpeed = motionDist * 0.01325D;
                 setY(getY() + rawUpSpeed * 3.2D);
                 setX(getX() - lookVec.x * rawUpSpeed / lookDist);
                 setZ(getZ() - lookVec.z * rawUpSpeed / lookDist);
             } else {
-                double[] dir = directionSpeedKey(speed.get());
-                setX(dir[0]);
-                setZ(dir[1]);
+                double autoSpeed = speed.get() * 0.5;
+                if (lookDist > 0) {
+                    setX((lookVec.x / lookDist) * autoSpeed);
+                    setZ((lookVec.z / lookDist) * autoSpeed);
+                }
+                setY(getY() + 0.06);
             }
+        }
+
+        if (mc.player.input.sneaking) {
+            setY(-downSpeed.get());
+        } else if (!mc.player.input.jumping) {
+            setY(-0.00000000003D * 0);
         }
 
         if (lookDist > 0.0D) {
